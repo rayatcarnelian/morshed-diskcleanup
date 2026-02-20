@@ -3,11 +3,12 @@ const API_URL = "";
 async function startScan() {
     const path = document.getElementById('scan-path').value;
     const minSize = document.getElementById('min-size').value || 100;
+    const onlyTemp = document.getElementById('only-temp').checked;
     const fileList = document.getElementById('file-list');
     fileList.innerHTML = '<p class="placeholder">Scanning... Please wait.</p>';
 
     try {
-        const response = await fetch(`${API_URL}/scan?path=${encodeURIComponent(path)}&min_size_mb=${minSize}`, {
+        const response = await fetch(`${API_URL}/scan?path=${encodeURIComponent(path)}&min_size_mb=${minSize}&only_temp=${onlyTemp}`, {
             method: 'POST'
         });
 

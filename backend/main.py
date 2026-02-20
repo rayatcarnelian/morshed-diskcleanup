@@ -12,6 +12,8 @@ from database import SessionLocal, ScanResult, init_db
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 
+import sys
+
 app = FastAPI()
 
 # Enable CORS for frontend
@@ -23,12 +25,22 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Support for PyInstaller bundles
+if getattr(sys, 'frozen', False):
+    # If we are running in a bundled PyInstaller exe, sys._MEIPASS is the path to the extracted bundled folder
+    base_dir = sys._MEIPASS
+    frontend_path = os.path.join(base_dir, "frontend")
+else:
+    # Otherwise we are just running normal python scripts
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    frontend_path = os.path.join(base_dir, "..", "frontend")
+
 # Serve frontend static files
-app.mount("/static", StaticFiles(directory="../frontend"), name="static")
+app.mount("/static", StaticFiles(directory=frontend_path), name="static")
 
 @app.get("/")
 async def read_index():
-    return FileResponse("../frontend/index.html")
+    return FileResponse(os.path.join(frontend_path, "index.html"))
 
 # Initialize Database
 init_db()
@@ -81,18 +93,35 @@ def get_category(extension):
         return "Applications"
     return "Others"
 
-def perform_scan(path: str, min_size_mb: float = 100.0):
+def perform_scan(path: str, min_size_mb: float = 100.0, only_temp: bool = False):
     """Background task to scan directory."""
     db = SessionLocal()
     try:
         dirs_to_scan = queue.Queue()
-        dirs_to_scan.put(path)
         visited_dirs = set()
         
-        try:
-            visited_dirs.add(os.path.normcase(os.path.abspath(path)))
-        except OSError:
-            pass
+        if only_temp:
+            import tempfile
+            safe_dirs = [
+                tempfile.gettempdir(),
+                os.environ.get('TEMP', ''),
+                os.environ.get('TMP', ''),
+                "C:\\Windows\\Temp",
+                os.path.expandvars("%LOCALAPPDATA%\\Temp")
+            ]
+            for safe_dir in safe_dirs:
+                if safe_dir and os.path.exists(safe_dir):
+                    norm_p = os.path.normcase(os.path.abspath(safe_dir))
+                    if norm_p not in visited_dirs:
+                        visited_dirs.add(norm_p)
+                        dirs_to_scan.put(safe_dir)
+        else:
+            dirs_to_scan.put(path)
+            try:
+                visited_dirs.add(os.path.normcase(os.path.abspath(path)))
+            except OSError:
+                pass
+                
         commit_counter = 0
 
         while not dirs_to_scan.empty() and scan_status["status"] == "scanning":
@@ -136,6 +165,10 @@ def perform_scan(path: str, min_size_mb: float = 100.0):
                                 stat = entry.stat()
                                 size_mb = stat.st_size / (1024 * 1024)
 
+                                safe = is_safe_path(entry.path)
+                                if only_temp and not safe:
+                                    continue # completely skip yielding this file
+
                                 if size_mb > min_size_mb:
                                     file_entry = ScanResult(
                                         filepath=entry.path,
@@ -144,7 +177,7 @@ def perform_scan(path: str, min_size_mb: float = 100.0):
                                         filetype=os.path.splitext(entry.name)[1],
                                         category=get_category(os.path.splitext(entry.name)[1]),
                                         last_modified=datetime.fromtimestamp(stat.st_mtime).strftime('%Y-%m-%d %H:%M:%S'),
-                                        is_safe_to_delete=is_safe_path(entry.path)
+                                        is_safe_to_delete=safe
                                     )
                                     db.add(file_entry)
                                     scan_status["total_found"] += 1
@@ -175,7 +208,8 @@ def perform_scan(path: str, min_size_mb: float = 100.0):
 def scan_directory(
     path: str, 
     background_tasks: BackgroundTasks, 
-    min_size_mb: float = 100.0, 
+    min_size_mb: float = 100.0,
+    only_temp: bool = False,
     db: Session = Depends(get_db)
 ):
     """Starts a directory scan in the background."""
@@ -194,7 +228,7 @@ def scan_directory(
     db.query(ScanResult).delete()
     db.commit()
     
-    background_tasks.add_task(perform_scan, path, min_size_mb)
+    background_tasks.add_task(perform_scan, path, min_size_mb, only_temp)
     
     return {"message": "Scan started in background", "status": "scanning"}
 

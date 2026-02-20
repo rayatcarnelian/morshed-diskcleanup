@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Morshed's disk cleaner</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+
+<body>
+    <div class="container">
+        <header>
+            <h1>Morshed's disk cleaner</h1>
+            <p>Scan your drive for large files and clean up space safely.</p>
+        </header>
+
+        <section class="warning-section">
+            <h3>⚠️ Important Safety Instructions</h3>
+            <p><strong>Read before deleting:</strong> Files marked as <span class="safe-badge">Temp file (Safe)</span>
+                are temporary system files and are safe to delete using the <strong>Delete</strong> button. Files marked
+                as <span class="unsafe-badge">Not temp file (Review carefully)</span> are outside your Temp folders.
+                These might be your personal photos, videos, or critical Windows system files!</p>
+            <ul>
+                <li><strong>Always</strong> use the <strong>"Show in Folder"</strong> button to verify what a file is
+                    before deleting it.</li>
+                <li><strong>Never</strong> Force Delete files in `C:\Windows` or `C:\Program Files`, or your PC may stop
+                    working!</li>
+                <li>Force Deleting a file permanently removes it and <strong>bypasses the Recycle Bin.</strong></li>
+            </ul>
+        </section>
+
+        <section class="scan-section">
+            <input type="text" id="scan-path" placeholder="Enter path to scan (e.g., C:\)" value="C:\">
+            <button id="scan-btn" onclick="startScan()">Scan Now</button>
+        </section>
+
+        <section class="controls-section">
+            <div class="filters">
+                <div class="filter-group">
+                    <label for="min-size">Min Size (MB):</label>
+                    <input type="number" id="min-size" value="100" min="1">
+                </div>
+
+                <div class="filter-group">
+                    <label for="sort-by">Sort By:</label>
+                    <select id="sort-by" onchange="applyFilters()">
+                        <option value="largest">Largest First</option>
+                        <option value="smallest">Smallest First</option>
+                    </select>
+                </div>
+
+                <div class="filter-group">
+                    <label for="filter-category">Category:</label>
+                    <select id="filter-category" onchange="applyFilters()">
+                        <option value="All">All</option>
+                        <option value="Media">Media</option>
+                        <option value="Documents">Documents</option>
+                        <option value="Archives">Archives</option>
+                        <option value="Applications">Applications</option>
+                        <option value="Images">Images</option>
+                        <option value="Others">Others</option>
+                    </select>
+                </div>
+            </div>
+            <button id="delete-safe-btn" onclick="deleteAllSafe()" class="danger-btn" style="display: none;">Delete All
+                Safe Files</button>
+        </section>
+
+        <section class="results-section">
+            <h2>Large Files Found</h2>
+            <div id="file-list">
+                <!-- File items will be injected here by JS -->
+                <p class="placeholder">No files scanned yet. Click 'Scan Now' to begin.</p>
+            </div>
+        </section>
+    </div>
+
+    <script src="/static/app.js"></script>
+</body>
+
+</html>

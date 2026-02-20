@@ -1,0 +1,24 @@
+# Windows / OS files
+__pycache__/
+*.py[cod]
+*$py.class
+.DS_Store
+Thumbs.db
+
+# Virtual Environments
+.venv/
+venv/
+env/
+ENV/
+
+# IDEs
+.vscode/
+.idea/
+
+# Database files - IMPORTANT!
+# We don't want to upload personal scan results!
+backend/*.db
+backend/disk_cleanup.db
+
+# Log files
+*.log
